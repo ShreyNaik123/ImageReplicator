@@ -67,9 +67,6 @@ To get started with **ImageReplicator**, follow these steps:
 - **Start Training**: Click "Start Training" to begin the process.
 - **Save Model**: Once training is complete, you can save and download the model weights.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgements
 
