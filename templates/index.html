@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Image Generation Training</title>
+		<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon" />
+		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<style>
+			:root {
+				--color-1: #bc9f8b;
+				--color-2: #b5cfb7;
+				--color-3: #cadabf;
+				--color-4: #e7e8d8;
+				--text-color: #4a4a4a;
+			}
+
+			body {
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+				line-height: 1.6;
+				color: var(--text-color);
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 20px;
+				background-color: var(--color-4);
+			}
+
+			h1 {
+				text-align: center;
+				color: var(--color-1);
+				margin-bottom: 30px;
+				font-size: 2.5em;
+				text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+			}
+
+			#training-form {
+				background-color: var(--color-3);
+				padding: 30px;
+				border-radius: 15px;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+			}
+
+			label {
+				display: block;
+				margin-bottom: 8px;
+				color: var(--color-1);
+				font-weight: bold;
+			}
+
+			input[type="number"],
+			input[type="file"],
+			select {
+				width: 100%;
+				padding: 10px;
+				margin-bottom: 20px;
+				border: 2px solid var(--color-2);
+				border-radius: 8px;
+				box-sizing: border-box;
+				background-color: var(--color-4);
+				transition: border-color 0.3s ease;
+			}
+
+			input[type="number"]:focus,
+			input[type="file"]:focus,
+			select:focus {
+				outline: none;
+				border-color: var(--color-1);
+			}
+
+			button {
+				background-color: var(--color-2);
+				color: var(--text-color);
+				padding: 12px 20px;
+				border: none;
+				border-radius: 8px;
+				cursor: pointer;
+				width: 100%;
+				font-size: 16px;
+				font-weight: bold;
+				transition: background-color 0.3s, transform 0.1s;
+				margin-bottom: 10px;
+			}
+
+			button:hover {
+				background-color: var(--color-1);
+				color: var(--color-4);
+				transform: translateY(-2px);
+			}
+
+			button:disabled {
+				background-color: #d0d0d0;
+				color: #888888;
+				cursor: not-allowed;
+				transform: none;
+			}
+
+			#image-container {
+				margin-top: 40px;
+				text-align: center;
+			}
+
+			#current-image {
+				max-width: 100%;
+				height: auto;
+				border-radius: 15px;
+				box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+			}
+
+			#chart-container {
+				margin-top: 40px;
+				background-color: var(--color-4);
+				padding: 20px;
+				border-radius: 15px;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+			}
+			#progress-container {
+				margin-top: 40px;
+				background-color: var(--color-4);
+				padding: 10px;
+				border-radius: 15px;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+				text-align: center;
+			}
+
+			#progress-bar {
+				background-color: var(--color-2);
+				border-radius: 8px;
+				overflow: hidden;
+				height: 20px;
+				position: relative;
+			}
+
+			.progress-bar-fill {
+				background-color: var(--color-1);
+				height: 100%;
+				width: 0;
+				transition: width 0.3s ease;
+			}
+
+			canvas {
+				max-width: 100%;
+				height: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Image Generation Training</h1>
+		<form id="training-form" enctype="multipart/form-data">
+			<label for="learning-rate">Learning Rate:</label>
+			<input type="number" id="learning-rate" name="learning_rate" step="0.0001" value="0.001" />
+
+			<label for="epochs">Number of Epochs:</label>
+			<input type="number" id="epochs" name="epochs" value="100" />
+
+			<label for="model">Select Model:</label>
+			<select id="model" name="model">
+				<option value="Model1">Model 1</option>
+				<option value="Model2">Model 2</option>
+				<option value="Model3">Model 3</option>
+			</select>
+
+			<label for="image">Upload Image:</label>
+			<input type="file" id="image" name="image" accept="image/*" required />
+
+			<button type="submit" id="start-training" disabled>Start Training</button>
+			<button type="button" id="save-model" disabled>Save Model</button>
+		</form>
+
+		<div id="progress-container">
+			<label for="progress-bar">Training Progress:</label>
+			<div id="progress-bar" class="progress-bar">
+				<div id="progress-bar-fill" class="progress-bar-fill"></div>
+			</div>
+		</div>
+
+		<div id="image-container">
+			<img id="current-image" src="" alt="" />
+		</div>
+
+		<div id="chart-container">
+			<canvas id="lossChart" width="600" height="300"></canvas>
+		</div>
+
+		<script>
+			$(document).ready(function () {
+				var lossChart;
+				var epochData = [];
+				var lossData = [];
+
+				function createChart() {
+					var ctx = document.getElementById("lossChart").getContext("2d");
+					lossChart = new Chart(ctx, {
+						type: "line",
+						data: {
+							labels: epochData,
+							datasets: [
+								{
+									label: "Loss",
+									data: lossData,
+									borderColor: "rgba(75, 192, 192, 1)",
+									fill: false,
+									tension: 0.1,
+								},
+							],
+						},
+						options: {
+							scales: {
+								x: {
+									title: {
+										display: true,
+										text: "Epoch",
+									},
+								},
+								y: {
+									title: {
+										display: true,
+										text: "Loss",
+									},
+								},
+							},
+						},
+					});
+				}
+				function updateProgressBar(currentEpoch) {
+					const totalEpochs = document.getElementById("epochs").value;
+					if (totalEpochs > 0) {
+						var progress = (currentEpoch / totalEpochs) * 100;
+						$("#progress-bar-fill").css("width", progress + "%");
+					}
+				}
+
+				$("#image").on("change", function () {
+					if ($(this).val()) {
+						$("#start-training").prop("disabled", false);
+						$("#save-model").prop("disabled", false);
+					} else {
+						$("#start-training").prop("disabled", true);
+						$("#save-model").prop("disabled", true);
+					}
+				});
+
+				$("#training-form").submit(function (e) {
+					e.preventDefault();
+
+					// Initialize FormData with the form element
+
+					var formData = new FormData(this);
+					for (var pair of formData.entries()) {
+						console.log(
+							pair[0] + ": " + (pair[1] instanceof File ? pair[1].name : JSON.stringify([1]))
+						);
+					}
+
+					// Send the form data using AJAX
+					$.ajax({
+						url: "/train",
+						type: "POST",
+						data: formData,
+						processData: false,
+						contentType: false,
+						success: function (response) {
+							console.log("Training initiated:", response.message);
+
+							// Now, initiate the EventSource to listen for updates
+							var eventSource = new EventSource("/stream");
+							eventSource.onmessage = function (e) {
+								var data = JSON.parse(e.data);
+
+								$("#current-image").attr("src", data.image);
+
+								$("#current-image").attr("src", data.image);
+
+								epochData.push(data.epoch);
+								lossData.push(data.loss / 1000);
+								if (!lossChart) {
+									createChart();
+								} else {
+									lossChart.update();
+								}
+								updateProgressBar(data.epoch);
+							};
+							eventSource.onerror = function (e) {
+								console.error("EventSource error:", e);
+							};
+						},
+						error: function (err) {
+							console.error("Error:", err);
+						},
+					});
+				});
+				$("#save-model").click(function () {
+					window.location.href = "/save_model";
+				});
+			});
+		</script>
+	</body>
+</html>
