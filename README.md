@@ -75,3 +75,9 @@ To get started with **ImageReplicator**, follow these steps:
 - **Chart.js**: For the beautiful charts.
 
 Feel free to contribute to the project or reach out if you have any questions!
+
+
+
+<img width="517" height="503" alt="358904479-8de6de0e-dfa5-460c-b95b-e5b25be94bca" src="https://github.com/user-attachments/assets/bbfa4f63-5b4e-4a33-a109-e54169d87a6a" />
+
+
